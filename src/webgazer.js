@@ -417,32 +417,36 @@
      * Loads the global data and passes it to the regression model
      */
     function loadGlobalData() {
-        ldb.get('webgazerGlobalData', function (value) {
-            var storage = JSON.parse(value) || defaults;
-            settings = storage.settings;
-            data = storage.data;
-            console.log();
-            for (var reg in regs) {
-                regs[reg].setData(storage.data);
+        getDB().then((idbValue) => {
+            if (idbValue) {
+                var storage = JSON.parse(idbValue.value);
+                settings = storage.settings;
+                data = storage.data;
+                for (var reg in regs) {
+                    regs[reg].setData(storage.data);
+                }
             }
+        }).catch((e) => {
+            console.log(e);
         });
-
     }
 
    /**
     * Constructs the global storage object and adds it to local storage
     */
-    function setGlobalData() {
-        var storage = {
-            'settings': settings,
-            'data': regs[0].getData() || data
-        };
+   function setGlobalData() {
+       var storage = {
+           'settings': settings,
+           'data': regs[0].getData() || data
+       };
 
-        // TODO fix storage break
        try {
-           ldb.set('webgazerGlobalData', JSON.stringify(storage));
-       }
-       catch (e) {
+           appendDB(JSON.stringify(storage)).then(() => {
+               console.log('stored successfully.');
+           }).catch(() => {
+               console.log('failed to store.');
+           });
+       } catch (e) {
            console.log(e);
        }
     }
