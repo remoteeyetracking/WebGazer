@@ -39,8 +39,20 @@
     webgazer.params.showGazeDot = false;
 
     //Params to clmtrackr and getUserMedia constraints
-    webgazer.params.clmParams = webgazer.params.clmParams || {useWebGL : true};
-    webgazer.params.camConstraints = webgazer.params.camConstraints || { video: { width: { min: 320, ideal: 640, max: 1920 }, height: { min: 240, ideal: 480, max: 1080 }, facingMode: "user" } };
+    //webgazer.params.clmParams = webgazer.params.clmParams || {useWebGL : true};
+    webgazer.params.camConstraints = webgazer.params.camConstraints || {
+        audio: false,
+        video: {
+            // width: { min: 320, ideal: 640, max: 1920 },
+            // height: { min: 240, ideal: 480, max: 1080 },
+            facingMode: "user",
+            width: {min: videoWidth, ideal: videoWidth},
+            height: {min: videoHeight, ideal: videoHeight},
+            aspectRatio: {exact: videoWidth / videoHeight},
+            resizeMode: 'crop-and-scale',
+            frameRate: {ideal: videoHz, max: 60},
+        }
+    };
 
     webgazer.params.smoothEyeBB = webgazer.params.smoothEyeBB || false;
     webgazer.params.blinkDetectionOn = webgazer.params.blinkDetectionOn || false;
@@ -67,15 +79,15 @@
     webgazer.params.moveTickSize = 50; //milliseconds
 
     //currently used tracker and regression models, defaults to clmtrackr and linear regression
-    var curTracker = new webgazer.tracker.ClmGaze();
+    //var curTracker = new webgazer.tracker.ClmGaze();
     var regs = [new webgazer.reg.RidgeReg()];
     var blinkDetector = new webgazer.BlinkDetector();
 
     //lookup tables
     var curTrackerMap = {
-        'clmtrackr': function() { return new webgazer.tracker.ClmGaze(); },
-        'trackingjs': function() { return new webgazer.tracker.TrackingjsGaze(); },
-        'js_objectdetect': function() { return new webgazer.tracker.Js_objectdetectGaze(); }
+        'eyevidoClmtrackr': function () {
+            return new webgazer.tracker.EyevidoClmtrackr();
+        }
     };
     var regressionMap = {
         'ridge': function() { return new webgazer.reg.RidgeReg(); },
@@ -177,7 +189,7 @@
             //if the x and y values for both the left and right eye are within
             //the validation box then the box border turns green, otherwise if
             //the eyes are outside of the box the colour is red
-            if (xPositions && yPositions){
+            if (xPositions && yPositions && currentEyeData.isPupilVisible) {
                 faceFeedbackBox.style.border = 'solid green';
             } else {
                 faceFeedbackBox.style.border = 'solid red';
@@ -295,28 +307,16 @@
             // Get gaze prediction (ask clm to track; pass the data to the regressor; get back a prediction)
             latestGazeData = getPrediction();
             // Count time
-            var elapsedTime = performance.now() - clockStart;
-            // [20180611 James Tompkin]: What does this line do?
-            callback(latestGazeData, elapsedTime);
-
-            // Draw face overlay
-            if( webgazer.params.showFaceOverlay )
-            {
-                // Draw the face overlay
-                faceOverlay.getContext('2d').clearRect( 0, 0, videoElement.videoWidth, videoElement.videoHeight);
-                var cl = webgazer.getTracker().clm;
-                if( cl.getCurrentPosition() ) {
-                    cl.draw(faceOverlay);
-                }
-            }
+            // var elapsedTime = performance.now() - clockStart;
+            if (currentEyeData.isPupilVisible)
+                callback(latestGazeData);
 
             // Feedback box
             // Check that the eyes are inside of the validation box
             if( webgazer.params.showFaceFeedbackBox )
                 checkEyesInValidationBox();
 
-
-            if( latestGazeData ) {
+            if (latestGazeData && currentEyeData.isPupilVisible) {
 
                 smoothingVals.push(latestGazeData);
                 var x = 0;
@@ -333,7 +333,7 @@
                     //store the position of the past fifty occuring tracker preditions
                     store_points(pred.x, pred.y, k);
                     k++;
-                    if (k == 50) {
+                    if (k === 50) {
                         k = 0;
                     }
                 }
@@ -417,12 +417,16 @@
      * Loads the global data and passes it to the regression model
      */
     function loadGlobalData() {
-        var storage = JSON.parse(window.localStorage.getItem(localstorageLabel)) || defaults;
-        settings = storage.settings;
-        data = storage.data;
-        for (var reg in regs) {
-            regs[reg].setData(storage.data);
-        }
+        ldb.get('webgazerGlobalData', function (value) {
+            var storage = JSON.parse(value) || defaults;
+            settings = storage.settings;
+            data = storage.data;
+            console.log();
+            for (var reg in regs) {
+                regs[reg].setData(storage.data);
+            }
+        });
+
     }
 
    /**
@@ -433,9 +437,14 @@
             'settings': settings,
             'data': regs[0].getData() || data
         };
-        window.localStorage.setItem(localstorageLabel, JSON.stringify(storage));
-        //TODO data should probably be stored in webgazer object instead of each regression model
-        //     -> requires duplication of data, but is likely easier on regression model implementors
+
+        // TODO fix storage break
+       try {
+           ldb.set('webgazerGlobalData', JSON.stringify(storage));
+       }
+       catch (e) {
+           console.log(e);
+       }
     }
 
     /**
@@ -476,6 +485,11 @@
         videoElementCanvas = document.createElement('canvas');
         videoElementCanvas.id = webgazer.params.videoElementCanvasId;
         videoElementCanvas.style.display = 'none';
+        videoElementCanvas.style.position = 'fixed';
+        videoElementCanvas.style.top = topDist;
+        videoElementCanvas.style.left = leftDist;
+        videoElementCanvas.style.width = webgazer.params.videoViewerWidth + 'px';
+        videoElementCanvas.style.height = webgazer.params.videoViewerHeight + 'px';
 
         // Face overlay
         // Shows the CLM tracking result
@@ -522,6 +536,17 @@
             document.body.appendChild(faceOverlay);
             document.body.appendChild(faceFeedbackBox);
             document.body.appendChild(gazeDot);
+
+            let videoSettings = {
+                frameRate: webgazer.params.camConstraints.video.frameRate.ideal
+            };
+            let videoTracks = videoStream.getVideoTracks();
+            if (typeof videoTracks[0].getSettings === 'function') {
+                videoSettings = videoTracks[0].getSettings();
+                videoHz = videoSettings.frameRate;
+            }
+
+            initEyevidoClmtrackrLoop();
 
             // Run this only once, so remove the event listener
             e.target.removeEventListener(e.type, setupPreviewVideo);
