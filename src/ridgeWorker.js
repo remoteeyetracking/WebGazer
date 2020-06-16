@@ -1,7 +1,13 @@
 'use strict';
 
 console.log('thread starting');
-importScripts('../src/util.js', '../src/mat.js');
+
+if(typeof importScripts === 'function') {
+    var util = new URL('portal/js/webcam/src/util.js', self.location.origin);
+    var mat = new URL('portal/js/webcam/src/mat.js', self.location.origin);
+    importScripts(util.toString(), mat.toString());
+}
+
 var ridgeParameter = Math.pow(10,-5);
 var resizeWidth = 10;
 var resizeHeight = 6;
@@ -127,7 +133,7 @@ function retrain() {
 
     var coefficientsX = ridge(screenXArray, eyeFeatures, ridgeParameter);
     var coefficientsY = ridge(screenYArray, eyeFeatures, ridgeParameter); 
-    console.log(coefficientsX);
+    //console.log(coefficientsX);
     self.postMessage({'X':coefficientsX, 'Y': coefficientsY});
     self.needsTraining = false;
 }

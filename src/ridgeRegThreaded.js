@@ -54,8 +54,11 @@
         this.dataClicks = new webgazer.util.DataWindow(dataWindow);
         this.dataTrail = new webgazer.util.DataWindow(dataWindow);
 
-        this.worker = new Worker('ridgeWorker.js');
-        this.worker.onerror = function(err) { console.log(err.message); };
+        var workerUrl = new URL('portal/js/webcam/ridgeWorker.js', window.location.origin);
+        this.worker = new Worker(workerUrl.toString());
+        this.worker.onerror = function(err) {
+            console.log(err.message);
+        };
         this.worker.onmessage = function(evt){
           weights.X = evt.data.X;
           weights.Y = evt.data.Y;
@@ -102,9 +105,9 @@
         predictedX = Math.floor(predictedX);
         predictedY = Math.floor(predictedY);
 
-        console.log('PredicedX');
-        console.log(predictedX);
-        console.log(predictedY);
+        // console.log('Predicted');
+        // console.log(predictedX);
+        // console.log(predictedY);
 
         return {
             x: predictedX,
