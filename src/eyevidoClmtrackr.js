@@ -164,7 +164,7 @@ function initEyevidoClmtrackrLoop() {
     var facefinder_classify_region = function (r, c, s, pixels, ldim) {
         return -1.0;
     };
-    var cascadeurl = 'https://raw.githubusercontent.com/nenadmarkus/pico/c2e81f9d23cc11d1a612fd21e4f9de0921a5d0d9/rnt/cascades/facefinder';
+    var cascadeurl = new URL('portal/js/webcam/data/facefinder', window.location.origin);
     fetch(cascadeurl).then(function (response) {
         response.arrayBuffer().then(function (buffer) {
             var bytes = new Int8Array(buffer);
@@ -179,7 +179,7 @@ function initEyevidoClmtrackrLoop() {
         return [-1.0, -1.0];
     };
     //var puplocurl = '../puploc.bin';
-    var puplocurl = 'https://f002.backblazeb2.com/file/tehnokv-www/posts/puploc-with-trees/demo/puploc.bin'
+    var puplocurl = new URL('portal/js/webcam/data/puploc.bin', window.location.origin);
     fetch(puplocurl).then(function (response) {
         response.arrayBuffer().then(function (buffer) {
             var bytes = new Int8Array(buffer);

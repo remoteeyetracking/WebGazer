@@ -122,18 +122,18 @@
 
         // Find the size of the box.
         // Pick the smaller of the two video preview sizes
-        smaller = Math.min( vw, vh );
-        larger  = Math.max( vw, vh );
+        var smaller = Math.min( vw, vh );
+        var larger  = Math.max( vw, vh );
 
         // Overall scalar
-        scalar = ( vw == larger ? pw / vw : ph / vh );
+        var scalar = ( vw == larger ? pw / vw : ph / vh );
 
         // Multiply this by 2/3, then adjust it to the size of the preview
-        boxSize = (smaller * webgazer.params.faceFeedbackBoxRatio) * scalar;
+        var boxSize = (smaller * webgazer.params.faceFeedbackBoxRatio) * scalar;
 
         // Set the boundaries of the face overlay validation box based on the preview
-        topVal = (ph - boxSize)/2;
-        leftVal = (pw - boxSize)/2;
+        var topVal = (ph - boxSize)/2;
+        var leftVal = (pw - boxSize)/2;
 
         // top, left, width, height
         return [topVal, leftVal, boxSize, boxSize]
@@ -246,10 +246,10 @@
      * @param {Number} height - the new height of the canvas
      */
     function paintCurrentFrame(canvas, width, height) {
-        if (canvas.width != width) {
+        if (canvas.width !== width) {
             canvas.width = width;
         }
-        if (canvas.height != height) {
+        if (canvas.height !== height) {
             canvas.height = height;
         }
 
@@ -308,15 +308,15 @@
             latestGazeData = getPrediction();
             // Count time
             // var elapsedTime = performance.now() - clockStart;
-            if (currentEyeData.isPupilVisible)
-                callback(latestGazeData);
+            // if (currentEyeData.isPupilVisible)
+            callback(latestGazeData);
 
             // Feedback box
             // Check that the eyes are inside of the validation box
             if( webgazer.params.showFaceFeedbackBox )
                 checkEyesInValidationBox();
 
-            if (latestGazeData && currentEyeData.isPupilVisible) {
+            if (latestGazeData) { // && currentEyeData.isPupilVisible) {
 
                 smoothingVals.push(latestGazeData);
                 var x = 0;
@@ -611,7 +611,11 @@
 
         loadGlobalData();
 
-        onFail = onFail || function() {console.log('No stream')};
+        onFail = onFail || function() {
+            videoElement = null;
+            videoStream = null;
+            console.log('No stream');
+        };
 
         if (debugVideoLoc) {
             init(debugVideoLoc);
@@ -626,15 +630,34 @@
         // Request webcam access under specific constraints
         // WAIT for access
         navigator.mediaDevices.getUserMedia( webgazer.params.camConstraints )
-        .then(function(stream){ // set the stream
-          videoStream = stream;
-          init(videoStream);
+        .then(function(){
+            // find webcam chosen
+            navigator.mediaDevices.enumerateDevices().then(function(devicesInfo) {
+                for (var i = 0; i !== devicesInfo.length; ++i) {
+                    var deviceInfo = devicesInfo[i];
+                    if (deviceInfo.kind === 'videoinput') {
+                        if(deviceInfo.label === window.webcamLabel) {
+                            window.webcamDeviceId = deviceInfo.deviceId;
+                            webgazer.params.camConstraints.video.deviceId = window.webcamDeviceId ? {ideal: window.webcamDeviceId} : undefined;
+                        }
+                    }
+                }
+                // initialize with the chosen webcam
+                navigator.mediaDevices.getUserMedia( webgazer.params.camConstraints ).then(function(stream) {
+                    videoStream = stream;
+                    init(videoStream);
+                }).catch(function(err) {
+                    onFail();
+                    console.log(err);
+                });
+            }).catch(function (error) {
+                onFail();
+                console.log(error);
+            });
         })
-        .catch(function(err) { // error handling
+        .catch(function(err) {
           onFail();
-          console.log( err );
-          videoElement = null;
-          videoStream = null;
+          console.log(err);
         });
 
         return webgazer;
@@ -685,9 +708,10 @@
 
         //webgazer.stopVideo(); // uncomment if you want to stop the video from streaming
 
-        //remove video element and canvas
-        document.body.removeChild(videoElement);
-        document.body.removeChild(videoElementCanvas);
+        if(videoElement)
+            document.body.removeChild(videoElement);
+        if(videoElementCanvas)
+            document.body.removeChild(videoElementCanvas);
 
         setGlobalData();
         return webgazer;
