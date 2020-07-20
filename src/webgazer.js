@@ -42,15 +42,16 @@
     //webgazer.params.clmParams = webgazer.params.clmParams || {useWebGL : true};
     webgazer.params.camConstraints = webgazer.params.camConstraints || {
         audio: false,
-        video: {
-            // width: { min: 320, ideal: 640, max: 1920 },
-            // height: { min: 240, ideal: 480, max: 1080 },
-            facingMode: "user",
+        video:
+            {
+            //width: { min: 320, ideal: 640, max: 1920 },
+            //height: { min: 240, ideal: 480, max: 1080 },
+            // facingMode: "user",
             width: {min: videoWidth, ideal: videoWidth},
             height: {min: videoHeight, ideal: videoHeight},
-            aspectRatio: {exact: videoWidth / videoHeight},
-            resizeMode: 'crop-and-scale',
-            frameRate: {ideal: videoHz, max: 60},
+            // aspectRatio: {exact: videoWidth / videoHeight},
+            // resizeMode: 'crop-and-scale',
+            //frameRate: {ideal: videoHz, max: 60},
         }
     };
 
@@ -67,7 +68,7 @@
     var latestGazeData = null;
     var paused = false;
     //registered callback for loop
-    var nopCallback = function(data, time) {};
+    var nopCallback = function(data, currentEyeData) {};
     var callback = nopCallback;
 
     //Types that regression systems should handle
@@ -308,15 +309,17 @@
             latestGazeData = getPrediction();
             // Count time
             // var elapsedTime = performance.now() - clockStart;
-            // if (currentEyeData.isPupilVisible)
-            callback(latestGazeData);
+            //if (currentEyeData.isPupilVisible)
+            // pass all data for positioning aid
+            callback(latestGazeData, currentEyeData);
 
             // Feedback box
             // Check that the eyes are inside of the validation box
             if( webgazer.params.showFaceFeedbackBox )
                 checkEyesInValidationBox();
 
-            if (latestGazeData) { // && currentEyeData.isPupilVisible) {
+            // for calibration...
+            if (latestGazeData && currentEyeData.isPupilVisible) {
 
                 smoothingVals.push(latestGazeData);
                 var x = 0;
@@ -483,6 +486,9 @@
         // We set these to stop the video appearing too large when it is added for the very first time
         videoElement.style.width = webgazer.params.videoViewerWidth + 'px';
         videoElement.style.height = webgazer.params.videoViewerHeight + 'px';
+
+        videoElement.style.transform = "rotateY(180deg)";
+        videoElement.style.webkitTransformOrigin = "rotateY(180deg)";
         //videoElement.style.zIndex="-1";
         
         // Canvas for drawing video to pass to clm tracker
@@ -495,6 +501,9 @@
         videoElementCanvas.style.width = webgazer.params.videoViewerWidth + 'px';
         videoElementCanvas.style.height = webgazer.params.videoViewerHeight + 'px';
 
+        videoElementCanvas.style.transform = "rotateY(180deg)";
+        videoElementCanvas.style.webkitTransformOrigin = "rotateY(180deg)";
+
         // Face overlay
         // Shows the CLM tracking result
         faceOverlay = document.createElement('canvas');
@@ -503,6 +512,8 @@
         faceOverlay.style.position = 'fixed';
         faceOverlay.style.top = topDist;
         faceOverlay.style.left = leftDist;
+        faceOverlay.style.transform = "rotateY(180deg)";
+        faceOverlay.style.webkitTransformOrigin = "rotateY(180deg)";
 
         // Feedback box
         // Lets the user know when their face is in the middle
@@ -511,7 +522,9 @@
         faceFeedbackBox.style.display = webgazer.params.showFaceFeedbackBox ? 'block' : 'none';
         faceFeedbackBox.style.position = 'fixed';
         faceFeedbackBox.style.border = 'solid';
-               
+        faceFeedbackBox.style.transform = "rotateY(180deg)";
+        faceFeedbackBox.style.webkitTransformOrigin = "rotateY(180deg)";
+
         // Gaze dot 
         // Starts offscreen
         gazeDot = document.createElement('div');
@@ -541,14 +554,15 @@
             document.body.appendChild(faceFeedbackBox);
             document.body.appendChild(gazeDot);
 
-            let videoSettings = {
-                frameRate: webgazer.params.camConstraints.video.frameRate.ideal
-            };
-            let videoTracks = videoStream.getVideoTracks();
-            if (typeof videoTracks[0].getSettings === 'function') {
-                videoSettings = videoTracks[0].getSettings();
-                videoHz = videoSettings.frameRate;
-            }
+            // let videoSettings = {
+            //     frameRate: webgazer.params.camConstraints.video.frameRate.ideal
+            // };
+            //let videoTracks = videoStream.getVideoTracks();
+            //if (typeof videoTracks[0].getSettings === 'function') {
+            //     var videoSettings = videoTracks[0].getSettings();
+            //     console.log(videoSettings);
+                // videoHz = videoSettings.frameRate;
+            // }
 
             initEyevidoClmtrackrLoop();
 
