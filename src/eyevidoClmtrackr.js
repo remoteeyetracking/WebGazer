@@ -164,7 +164,9 @@ function initEyevidoClmtrackrLoop() {
     var facefinder_classify_region = function (r, c, s, pixels, ldim) {
         return -1.0;
     };
-    var cascadeurl = new URL('portal/js/webcam/data/facefinder', window.location.origin);
+
+    var serverName = window.location.pathname.split("/")[1];
+    var cascadeurl = new URL(serverName+'/js/webcam/data/facefinder', window.location.origin);
     fetch(cascadeurl).then(function (response) {
         response.arrayBuffer().then(function (buffer) {
             var bytes = new Int8Array(buffer);
@@ -179,7 +181,7 @@ function initEyevidoClmtrackrLoop() {
         return [-1.0, -1.0];
     };
     //var puplocurl = '../puploc.bin';
-    var puplocurl = new URL('portal/js/webcam/data/puploc.bin', window.location.origin);
+    var puplocurl = new URL(serverName+'/js/webcam/data/puploc.bin', window.location.origin);
     fetch(puplocurl).then(function (response) {
         response.arrayBuffer().then(function (buffer) {
             var bytes = new Int8Array(buffer);
